@@ -2,3 +2,5 @@
 .env
 airflow/dags/__pycache__
 logs/
+.DS_Store
+**/.DS_Store
