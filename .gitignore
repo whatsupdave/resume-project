@@ -1,2 +1,4 @@
 .python-version
 .env
+airflow/dags/__pycache__
+logs/
