@@ -75,6 +75,7 @@ services:
     restart: unless-stopped
     volumes:
       - ./airflow/dags:/opt/airflow/dags
+      - ./airflow/logs:/opt/airflow/logs
     env_file:
       - ./.env
     environment:
