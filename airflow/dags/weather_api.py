@@ -37,6 +37,15 @@ def get_lat_lon_for_city(city: str = "Vilnius") -> tuple[float, float]:
     return lat, lon
 
 
+def get_weather_for_city(lat: str, lon: str):
+    """
+    Gets today weather for city
+    """
+    conn = BaseHook.get_connection(f"openweathermap_default")
+    api_key = conn.password
+    endpoint = f"http://api.openweathermap.org/data/2.5/forecast?cnt=10&lat={lat}&lon={lon}&appid={api_key}"
+
+
 # DAG Config
 DAG_NAME = "weather_monitor"
 DAG_DESCRIPTION = "Gets weather data"
