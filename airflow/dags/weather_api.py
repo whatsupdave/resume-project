@@ -8,9 +8,9 @@ DAG_NAME = "weather_monitor"
 DAG_DESCRIPTION = "Gets weather data"
 
 # S3 Config
-s3_bucket_name = ""
-s3_folder_name = ""
-s3_file_name = ""
+S3_BUCKER_NAME = ""
+S3_FOLDER_NAME = ""
+S3_FILE_NAME = ""
 
 default_args = {
     "owner": "Eivydas",
@@ -28,15 +28,11 @@ with DAG(
     DAG_NAME,
     default_args=default_args,
     description=DAG_DESCRIPTION,
-    tags=["daily", "alerting"],
+    tags=["placeholder"],
     start_date=datetime(2023, 9, 25),
     schedule="0 5 * * *",
     max_active_runs=1,
     catchup=False,
 ) as dag:
 
-    t1_get_data_and_write = EmptyOperator(
-        task_id="get_data_and_write_to_s3",
-        python_callable="get_data_and_write_to_s3",
-        op_kwargs={"todays_date": "{{ data_interval_end | ds_nodash }}"},
-    )
+    t1_empy = EmptyOperator(task_id="empty")
