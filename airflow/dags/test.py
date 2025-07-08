@@ -3,6 +3,15 @@ from airflow.operators.python import PythonOperator
 from airflow.operators.empty import EmptyOperator
 from datetime import datetime, timedelta
 
+# DAG Config
+DAG_NAME = "weather_monitor"
+DAG_DESCRIPTION = "Gets weather data"
+
+# S3 Config
+s3_bucket_name = ""
+s3_folder_name = ""
+s3_file_name = ""
+
 default_args = {
     "owner": "Eivydas",
     "depends_on_past": False,
@@ -16,9 +25,9 @@ default_args = {
 }
 
 with DAG(
-    "DAG_NAME",
+    DAG_NAME,
     default_args=default_args,
-    description="DAG_DESCRIPTION",
+    description=DAG_DESCRIPTION,
     tags=["daily", "alerting"],
     start_date=datetime(2023, 9, 25),
     schedule="0 5 * * *",
