@@ -1,7 +1,6 @@
 from airflow import DAG
 
-# from airflow.operators.python import PythonOperator
-from airflow.operators.empty import EmptyOperator
+from airflow.operators.python import PythonOperator
 from datetime import datetime, timedelta
 from typing import Dict, List, Tuple, Any, Optional, Union
 
@@ -42,7 +41,7 @@ def get_lat_lon_for_city(city: str = "Vilnius") -> tuple[float, float]:
     return lat, lon
 
 
-def get_weather_for_city(lat: str, lon: str) -> Dict[str, any]:
+def get_weather_for_city(lat:float, lon:float) -> Dict[str, any]:
     """
     Gets latitude and longitude for the specified city.
 
@@ -66,6 +65,12 @@ def get_weather_for_city(lat: str, lon: str) -> Dict[str, any]:
 
     return response.json()
 
+# DAG Runners
+def get_weather_data():
+    lat, lon = get_lat_lon_for_city()
+    weather = get_weather_for_city(lat, lon)#
+
+    return weather
 
 # DAG Config
 DAG_NAME = "weather_monitor"
@@ -99,4 +104,7 @@ with DAG(
     catchup=False,
 ) as dag:
 
-    t1_empy = EmptyOperator(task_id="empty")
+    t1_get_weather_data = PythonOperator(
+        task_id="get_weather_data",
+        python_callable=get_weather_data,
+    )
