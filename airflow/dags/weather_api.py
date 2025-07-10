@@ -1,7 +1,8 @@
 from airflow import DAG
-from airflow.operators.python import PythonOperator
+#from airflow.operators.python import PythonOperator
 from airflow.operators.empty import EmptyOperator
 from datetime import datetime, timedelta
+from typing import Dict, List, Tuple, Any, Optional, Union
 
 import requests
 from airflow.hooks.base import BaseHook
@@ -37,13 +38,16 @@ def get_lat_lon_for_city(city: str = "Vilnius") -> tuple[float, float]:
     return lat, lon
 
 
-def get_weather_for_city(lat: str, lon: str):
+def get_weather_for_city(lat: str, lon: str) -> Dict[str, any]:
     """
     Gets today weather for city
     """
     conn = BaseHook.get_connection(f"openweathermap_default")
     api_key = conn.password
     endpoint = f"http://api.openweathermap.org/data/2.5/forecast?cnt=10&lat={lat}&lon={lon}&appid={api_key}"
+    response = requests.get(url=endpoint)
+
+    return response.json()
 
 
 # DAG Config
