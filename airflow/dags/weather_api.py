@@ -40,7 +40,14 @@ def get_lat_lon_for_city(city: str = "Vilnius") -> tuple[float, float]:
 
 def get_weather_for_city(lat: str, lon: str) -> Dict[str, any]:
     """
-    Gets today weather for city
+    Gets latitude and longitude for the specified city.
+
+    Args:
+        lat: city latitude
+        lon: city longitude
+
+    Returns:
+        Dict[str, any]: Dictionary with weather values for city
     """
     conn = BaseHook.get_connection(f"openweathermap_default")
     api_key = conn.password
