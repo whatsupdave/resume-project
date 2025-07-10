@@ -7,3 +7,5 @@ logs/
 Dockerfile
 stupid-test.ipynb
 local-test.py
+.venv
+.venv1
