@@ -68,7 +68,7 @@ def get_weather_for_city(lat:float, lon:float) -> Dict[str, any]:
 # DAG Runners
 def get_weather_data():
     lat, lon = get_lat_lon_for_city()
-    weather = get_weather_for_city(lat, lon)#
+    weather = get_weather_for_city(lat, lon)xw
 
     return weather
 
