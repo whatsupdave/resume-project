@@ -18,14 +18,12 @@ def get_lat_lon_for_city(city: str = "Vilnius") -> tuple[float, float]:
 
     Returns:
         tuple[float, float]: Latitude and longitude coordinates
-
-    Raises:
-        ValueError: If no location is found for the specified city
     """
     conn = BaseHook.get_connection(f"openweathermap_default")
     api_key = conn.password
+    host = conn.host
     endpoint = (
-        f"http://api.openweathermap.org/geo/1.0/direct?q={city}&limit=1&appid={api_key}"
+        f"http://{host}/geo/1.0/direct?q={city}&limit=1&appid={api_key}"
     )
 
     try:
@@ -57,7 +55,8 @@ def get_weather_for_city(lat: str, lon: str) -> Dict[str, any]:
     """
     conn = BaseHook.get_connection(f"openweathermap_default")
     api_key = conn.password
-    endpoint = f"http://api.openweathermap.org/data/2.5/forecast?cnt=10&lat={lat}&lon={lon}&appid={api_key}"
+    host = conn.host
+    endpoint = f"http://{host}/data/2.5/forecast?cnt=10&lat={lat}&lon={lon}&appid={api_key}"
 
     try:
         response = requests.get(url=endpoint)
