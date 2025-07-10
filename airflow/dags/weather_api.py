@@ -1,5 +1,6 @@
 from airflow import DAG
-#from airflow.operators.python import PythonOperator
+
+# from airflow.operators.python import PythonOperator
 from airflow.operators.empty import EmptyOperator
 from datetime import datetime, timedelta
 from typing import Dict, List, Tuple, Any, Optional, Union
@@ -27,13 +28,18 @@ def get_lat_lon_for_city(city: str = "Vilnius") -> tuple[float, float]:
         f"http://api.openweathermap.org/geo/1.0/direct?q={city}&limit=1&appid={api_key}"
     )
 
-    response = requests.get(endpoint).json()
+    try:
+        response = requests.get(endpoint)
+        response.raise_for_status()
+    except requests.exceptions.RequestException as e:
+        raise RuntimeError(f"API Call Error: {e}") from e
 
-    if not response:
+    data = response.json()
+    if not data:
         raise ValueError(f"No location found for {city}")
 
-    lat = response[0]["lat"]
-    lon = response[0]["lon"]
+    lat = data[0]["lat"]
+    lon = data[0]["lon"]
 
     return lat, lon
 
@@ -52,7 +58,12 @@ def get_weather_for_city(lat: str, lon: str) -> Dict[str, any]:
     conn = BaseHook.get_connection(f"openweathermap_default")
     api_key = conn.password
     endpoint = f"http://api.openweathermap.org/data/2.5/forecast?cnt=10&lat={lat}&lon={lon}&appid={api_key}"
-    response = requests.get(url=endpoint)
+
+    try:
+        response = requests.get(url=endpoint)
+        response.raise_for_status()
+    except requests.exceptions.RequestException as e:
+        raise RuntimeError(f"API Call Error: {e}") from e
 
     return response.json()
 
