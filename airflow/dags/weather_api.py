@@ -18,12 +18,11 @@ def get_lat_lon_for_city(city: str = "Vilnius") -> tuple[float, float]:
     Returns:
         tuple[float, float]: Latitude and longitude coordinates
     """
+
     conn = BaseHook.get_connection(f"openweathermap_default")
     api_key = conn.password
     host = conn.host
-    endpoint = (
-        f"http://{host}/geo/1.0/direct?q={city}&limit=1&appid={api_key}"
-    )
+    endpoint = f"http://{host}/geo/1.0/direct?q={city}&limit=1&appid={api_key}"
 
     try:
         response = requests.get(endpoint)
@@ -41,21 +40,21 @@ def get_lat_lon_for_city(city: str = "Vilnius") -> tuple[float, float]:
     return lat, lon
 
 
-def get_weather_for_city(lat:float, lon:float) -> Dict[str, any]:
+def get_weather_for_city(**context) -> Dict[str, any]:
     """
     Gets latitude and longitude for the specified city.
-
-    Args:
-        lat: city latitude
-        lon: city longitude
 
     Returns:
         Dict[str, any]: Dictionary with weather values for city
     """
+
+    lat, lon = context["ti"].xcom_pull(key="return_value", task_ids="get_lat_lon")
     conn = BaseHook.get_connection(f"openweathermap_default")
     api_key = conn.password
     host = conn.host
-    endpoint = f"http://{host}/data/2.5/forecast?cnt=10&lat={lat}&lon={lon}&appid={api_key}"
+    endpoint = (
+        f"http://{host}/data/2.5/forecast?cnt=10&lat={lat}&lon={lon}&appid={api_key}"
+    )
 
     try:
         response = requests.get(url=endpoint)
@@ -65,12 +64,6 @@ def get_weather_for_city(lat:float, lon:float) -> Dict[str, any]:
 
     return response.json()
 
-# DAG Runners
-def get_weather_data():
-    lat, lon = get_lat_lon_for_city()
-    weather = get_weather_for_city(lat, lon)
-
-    return weather
 
 # DAG Config
 DAG_NAME = "weather_monitor"
@@ -104,7 +97,14 @@ with DAG(
     catchup=False,
 ) as dag:
 
-    t1_get_weather_data = PythonOperator(
-        task_id="get_weather_data",
-        python_callable=get_weather_data,
+    get_lat_lon = PythonOperator(
+        task_id="get_lat_lon",
+        python_callable=get_lat_lon_for_city,
     )
+
+    get_weather_data = PythonOperator(
+        task_id="get_weather_for_city",
+        python_callable=get_weather_for_city,
+    )
+
+    get_lat_lon >> get_weather_data
