@@ -1,6 +1,7 @@
 from airflow import DAG
 
 from airflow.operators.python import PythonOperator
+from airflow.providers.amazon.aws.operators.s3 import S3CreateObjectOperator
 from datetime import datetime, timedelta
 from typing import Dict, List, Tuple, Any, Optional, Union
 
@@ -40,18 +41,23 @@ def get_lat_lon_for_city(city: str = "Vilnius") -> tuple[float, float]:
     return lat, lon
 
 
-def get_weather_for_city(**context) -> Dict[str, any]:
+def get_weather_for_city(**context) -> str:
     """
-    Gets latitude and longitude for the specified city.
+    Gets weather forecast for the city using coordinates from previous task.
+
+    Args:
+        **context: Airflow context dictionary
 
     Returns:
-        Dict[str, any]: Dictionary with weather values for city
+        str: JSON string containing weather forecast data
     """
 
     lat, lon = context["ti"].xcom_pull(key="return_value", task_ids="get_lat_lon")
-    conn = BaseHook.get_connection(f"openweathermap_default")
+
+    conn = BaseHook.get_connection("openweathermap_default")
     api_key = conn.password
     host = conn.host
+
     endpoint = (
         f"http://{host}/data/2.5/forecast?cnt=10&lat={lat}&lon={lon}&appid={api_key}"
     )
@@ -62,15 +68,19 @@ def get_weather_for_city(**context) -> Dict[str, any]:
     except requests.exceptions.RequestException as e:
         raise RuntimeError(f"API Call Error: {e}") from e
 
-    return response.json()
+    weather_data = response.text
 
+    return weather_data
+
+def transform_weather_data():
+    print()
 
 # DAG Config
 DAG_NAME = "weather_monitor"
 DAG_DESCRIPTION = "Gets weather data"
 
 # S3 Config
-S3_BUCKER_NAME = ""
+S3_BUCKET_NAME = "openweather-api-data"
 S3_FOLDER_NAME = ""
 S3_FILE_NAME = ""
 
@@ -107,4 +117,13 @@ with DAG(
         python_callable=get_weather_for_city,
     )
 
-    get_lat_lon >> get_weather_data
+    upload_raw_data_to_s3 = S3CreateObjectOperator(
+        task_id='upload_raw_data_to_s3',
+        s3_bucket=S3_BUCKET_NAME,
+        s3_key='raw_data/{{ data_interval_start | ds }}_Vilnius.json',
+        data="{{ ti.xcom_pull(task_ids='get_weather_for_city', key='return_value') }}",
+        replace=True,
+        aws_conn_id="aws_default"
+    )
+
+    get_lat_lon >> get_weather_data >> upload_raw_data_to_s3
