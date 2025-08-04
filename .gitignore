@@ -6,7 +6,7 @@ logs/
 **/.DS_Store
 Dockerfile
 stupid-test.ipynb
-local-test.py
+local_test
 .venv
 .venv1
 .idea

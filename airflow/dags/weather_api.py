@@ -151,7 +151,7 @@ with DAG(
     upload_raw_data_to_s3 = S3CreateObjectOperator(
         task_id="upload_raw_data_to_s3",
         s3_bucket=S3_BUCKET_NAME,
-        s3_key=f"{S3_RAW_DATA_FOLDER}/{{ data_interval_start | ds }}_Vilnius.json",
+        s3_key="raw_data/{{ data_interval_start | ds }}_Vilnius.json",
         data="{{ ti.xcom_pull(task_ids='get_weather_for_city', key='return_value') }}",
         replace=True,
         aws_conn_id="aws_default",
@@ -162,4 +162,13 @@ with DAG(
         python_callable=transform_weather_data,
     )
 
-    get_lat_lon >> get_data >> upload_raw_data_to_s3 >> transform_data
+    upload_transformed_data_to_s3 = S3CreateObjectOperator(
+        task_id="upload_transformed_data_to_s3",
+        s3_bucket=S3_BUCKET_NAME,
+        s3_key="transformed_data/{{ data_interval_start | ds }}/_Vilnius.csv",
+        data="{{ ti.xcom_pull(task_ids='transform_weather_data', key='return_value') }}",
+        replace=True,
+        aws_conn_id="aws_default",
+    )
+
+    get_lat_lon >> get_data >> upload_raw_data_to_s3 >> transform_data >> upload_transformed_data_to_s3
