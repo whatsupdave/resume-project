@@ -9,6 +9,7 @@ import pandas as pd
 
 import requests
 from airflow.hooks.base import BaseHook
+from airflow.utils.task_group import TaskGroup
 
 
 def get_lat_lon_for_city(city: str = "Vilnius") -> tuple[float, float]:
@@ -115,6 +116,39 @@ S3_RAW_DATA_FOLDER = "raw_data"
 S3_CLEANED_DATA_FOLDER = "transformed_data"
 S3_FILE_NAME = ""
 
+
+def extract_task_group() -> TaskGroup:
+    """
+    Gets required parameters needed to  call Openweathermap API, gets the data & uploads raw data to S3 bucker
+
+    Returns:
+        TaskGroup containing Openweathermap data processing tasks
+    """
+    with TaskGroup(group_id="extract_openweathermap_api_data") as extract_tasks:
+        get_lat_lon = PythonOperator(
+            task_id="get_lat_lon",
+            python_callable=get_lat_lon_for_city,
+        )
+
+        get_weather_data = PythonOperator(
+            task_id="get_weather_for_city",
+            python_callable=get_weather_for_city,
+        )
+
+        load_raw_data_to_s3 = S3CreateObjectOperator(
+            task_id="load_raw_data_to_s3",
+            s3_bucket=S3_BUCKET_NAME,
+            s3_key="raw_data/{{ data_interval_start | ds }}_Vilnius.json",
+            data="{{ ti.xcom_pull(task_ids='get_weather_for_city', key='return_value') }}",
+            replace=True,
+            aws_conn_id="aws_default",
+        )
+
+        get_lat_lon >> get_weather_data >> load_raw_data_to_s3
+
+    return extract_tasks
+
+
 default_args = {
     "owner": "Eivydas",
     "depends_on_past": False,
@@ -138,32 +172,15 @@ with DAG(
     catchup=False,
 ) as dag:
 
-    get_lat_lon = PythonOperator(
-        task_id="get_lat_lon",
-        python_callable=get_lat_lon_for_city,
-    )
-
-    get_data = PythonOperator(
-        task_id="get_weather_for_city",
-        python_callable=get_weather_for_city,
-    )
-
-    upload_raw_data_to_s3 = S3CreateObjectOperator(
-        task_id="upload_raw_data_to_s3",
-        s3_bucket=S3_BUCKET_NAME,
-        s3_key="raw_data/{{ data_interval_start | ds }}_Vilnius.json",
-        data="{{ ti.xcom_pull(task_ids='get_weather_for_city', key='return_value') }}",
-        replace=True,
-        aws_conn_id="aws_default",
-    )
+    extract_and_upload_raw_data_to_s3 = extract_task_group()
 
     transform_data = PythonOperator(
         task_id="transform_weather_data",
         python_callable=transform_weather_data,
     )
 
-    upload_transformed_data_to_s3 = S3CreateObjectOperator(
-        task_id="upload_transformed_data_to_s3",
+    load_transformed_data_to_s3 = S3CreateObjectOperator(
+        task_id="load_transformed_data_to_s3",
         s3_bucket=S3_BUCKET_NAME,
         s3_key="transformed_data/{{ data_interval_start | ds }}/_Vilnius.csv",
         data="{{ ti.xcom_pull(task_ids='transform_weather_data', key='return_value') }}",
@@ -171,4 +188,4 @@ with DAG(
         aws_conn_id="aws_default",
     )
 
-    get_lat_lon >> get_data >> upload_raw_data_to_s3 >> transform_data >> upload_transformed_data_to_s3
+    extract_and_upload_raw_data_to_s3 >> transform_data >> load_transformed_data_to_s3
