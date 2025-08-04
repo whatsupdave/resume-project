@@ -104,7 +104,11 @@ def transform_weather_data(**context: Any) -> str:
     )
     df["weather_main"] = df["weather"].apply(lambda x: x[0]["main"] if x else None)
 
-    df = df[["dt", "dt_txt", "main.temp", "weather_description"]]
+    city_info = dataset['city']
+    df['city_name'] = city_info['name']
+    df['city_country'] = city_info['country']
+
+    df = df[['dt','dt_txt', 'main.temp', 'weather_description', 'city_name', 'city_country']]
     csv = df.to_csv(index=False)
 
     return csv
@@ -197,7 +201,7 @@ with DAG(
         s3_keys=["transformed_data/{{ data_interval_start | ds }}/_Vilnius.csv"],
         table='SNOWFLAKE_SAMPLE_TABLE',
         schema=os.getenv("SNOWFLAKE_SCHEMA"),
-        stage='SNOWFLAKE_STAGE',
+        stage='openweather_transformed_stage',
         file_format="(type = 'CSV',field_delimiter = ';')",
         dag=dag,
     )
