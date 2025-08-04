@@ -19,15 +19,14 @@ A small, production-flavored pipeline that fetches **OpenWeather** data for a ci
 
 ```mermaid
 flowchart LR
-    A[OpenWeather API\n(geo + forecast)] --> B[Extract (PythonOperator)]
-    B -->|raw JSON| C[S3\ns3://openweather-api-data/raw_data/]
-    B --> D[Transform (PythonOperator, Pandas)]
-    D -->|CSV| E[S3\ns3://openweather-api-data/transformed_data/]
-    E --> F[Snowflake External Stage]
-    F --> G[Snowflake Table\nWEATHER_DATA]
-
-    subgraph Airflow (daily at 05:00 UTC)
-      B -.XCom.-> D
+    A["OpenWeather API<br/>(geo + forecast)"] --> B["Extract - PythonOperator"]
+    B -->|raw JSON| C["S3<br/>s3://openweather-api-data/raw_data/"]
+    B --> D["Transform - PythonOperator (Pandas)"]
+    D -->|CSV| E["S3<br/>s3://openweather-api-data/transformed_data/"]
+    E --> F["Snowflake External Stage"]
+    F --> G["Snowflake Table<br/>WEATHER_DATA"]
+    subgraph Airflow
+      B -. XCom .-> D
     end
 ```
 
