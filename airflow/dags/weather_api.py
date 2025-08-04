@@ -4,6 +4,8 @@ from airflow.operators.python import PythonOperator
 from airflow.providers.amazon.aws.operators.s3 import S3CreateObjectOperator
 from datetime import datetime, timedelta
 from typing import Dict, List, Tuple, Any, Optional, Union
+import json
+import pandas as pd
 
 import requests
 from airflow.hooks.base import BaseHook
@@ -59,7 +61,7 @@ def get_weather_for_city(**context) -> str:
     host = conn.host
 
     endpoint = (
-        f"http://{host}/data/2.5/forecast?cnt=10&lat={lat}&lon={lon}&appid={api_key}"
+        f"http://{host}/data/2.5/forecast?cnt=10&lat={lat}&lon={lon}&units=metric&appid={api_key}"
     )
 
     try:
@@ -73,7 +75,16 @@ def get_weather_for_city(**context) -> str:
     return weather_data
 
 def transform_weather_data():
-    print()
+    response = get_weather_for_city()
+    dataset = json.loads(response)
+    df = pd.json_normalize(dataset['list'])
+
+    df['weather_description'] = df['weather'].apply(lambda x: x[0]['description'] if x else None)
+    df['weather_main'] = df['weather'].apply(lambda x: x[0]['main'] if x else None)
+
+    df = df[['dt','dt_txt', 'main.temp', 'weather_description']]
+
+    return df
 
 # DAG Config
 DAG_NAME = "weather_monitor"
