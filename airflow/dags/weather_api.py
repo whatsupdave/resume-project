@@ -2,7 +2,9 @@ from airflow import DAG
 
 from airflow.operators.python import PythonOperator
 from airflow.providers.amazon.aws.operators.s3 import S3CreateObjectOperator
-from airflow.providers.snowflake.transfers.s3_to_snowflake import S3ToSnowflakeOperator
+from airflow.providers.snowflake.transfers.copy_into_snowflake import (
+    CopyFromExternalStageToSnowflakeOperator,
+)
 from datetime import datetime, timedelta
 from typing import Dict, List, Tuple, Any, Optional, Union
 import json
@@ -11,10 +13,6 @@ import pandas as pd
 import requests
 from airflow.hooks.base import BaseHook
 from airflow.utils.task_group import TaskGroup
-import os
-from dotenv import load_dotenv
-
-load_dotenv()
 
 def get_lat_lon_for_city(city: str = "Vilnius") -> tuple[float, float]:
     """
@@ -59,7 +57,9 @@ def get_weather_for_city(**context) -> str:
         str: JSON string containing weather forecast data
     """
 
-    lat, lon = context["ti"].xcom_pull(key="return_value", task_ids="get_lat_lon")
+    lat, lon = context["ti"].xcom_pull(
+        key="return_value", task_ids="extract_and_load_data.get_lat_lon"
+    )
 
     conn = BaseHook.get_connection("openweathermap_default")
     api_key = conn.password
@@ -94,7 +94,7 @@ def transform_weather_data(**context: Any) -> str:
     """
 
     weather_data = context["ti"].xcom_pull(
-        key="return_value", task_ids="get_weather_for_city"
+        key="return_value", task_ids="extract_and_load_data.get_weather_for_city"
     )
     dataset = json.loads(weather_data)
     df = pd.json_normalize(dataset["list"])
@@ -104,11 +104,20 @@ def transform_weather_data(**context: Any) -> str:
     )
     df["weather_main"] = df["weather"].apply(lambda x: x[0]["main"] if x else None)
 
-    city_info = dataset['city']
-    df['city_name'] = city_info['name']
-    df['city_country'] = city_info['country']
+    city_info = dataset["city"]
+    df["city_name"] = city_info["name"]
+    df["city_country"] = city_info["country"]
 
-    df = df[['dt','dt_txt', 'main.temp', 'weather_description', 'city_name', 'city_country']]
+    df = df[
+        [
+            "dt",
+            "dt_txt",
+            "main.temp",
+            "weather_description",
+            "city_name",
+            "city_country",
+        ]
+    ].rename(columns={"main.temp": "main_temp"})
     csv = df.to_csv(index=False)
 
     return csv
@@ -190,20 +199,25 @@ with DAG(
     load_transformed_data_to_s3 = S3CreateObjectOperator(
         task_id="load_transformed_data_to_s3",
         s3_bucket=S3_BUCKET_NAME,
-        s3_key="transformed_data/{{ data_interval_start | ds }}/_Vilnius.csv",
+        s3_key="transformed_data/{{ data_interval_start | ds }}_Vilnius.csv",
         data="{{ ti.xcom_pull(task_ids='transform_weather_data', key='return_value') }}",
         replace=True,
         aws_conn_id="aws_default",
     )
 
-    copy_into_table = S3ToSnowflakeOperator(
-        task_id='copy_into_table',
-        s3_keys=["transformed_data/{{ data_interval_start | ds }}/_Vilnius.csv"],
-        table='SNOWFLAKE_SAMPLE_TABLE',
-        schema=os.getenv("SNOWFLAKE_SCHEMA"),
-        stage='openweather_transformed_stage',
-        file_format="(type = 'CSV',field_delimiter = ';')",
+    load_into_table = CopyFromExternalStageToSnowflakeOperator(
+        task_id="load_clean_data_into_table",
+        snowflake_conn_id="snowflake_conn_id",
+        files=["{{ data_interval_start | ds }}_Vilnius.csv"],
+        table="weather_data",
+        stage="openweather_transformed_stage",
+        file_format="(type='CSV', field_delimiter=',', skip_header=1)",
         dag=dag,
     )
 
-    extract_and_upload_raw_data_to_s3 >> transform_data >> load_transformed_data_to_s3 >> copy_into_table
+    (
+        extract_and_upload_raw_data_to_s3
+        >> transform_data
+        >> load_transformed_data_to_s3
+        >> load_into_table
+    )
