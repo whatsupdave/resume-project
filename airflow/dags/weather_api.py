@@ -2,6 +2,7 @@ from airflow import DAG
 
 from airflow.operators.python import PythonOperator
 from airflow.providers.amazon.aws.operators.s3 import S3CreateObjectOperator
+from airflow.providers.snowflake.transfers.s3_to_snowflake import S3ToSnowflakeOperator
 from datetime import datetime, timedelta
 from typing import Dict, List, Tuple, Any, Optional, Union
 import json
@@ -10,7 +11,10 @@ import pandas as pd
 import requests
 from airflow.hooks.base import BaseHook
 from airflow.utils.task_group import TaskGroup
+import os
+from dotenv import load_dotenv
 
+load_dotenv()
 
 def get_lat_lon_for_city(city: str = "Vilnius") -> tuple[float, float]:
     """
@@ -188,4 +192,14 @@ with DAG(
         aws_conn_id="aws_default",
     )
 
-    extract_and_upload_raw_data_to_s3 >> transform_data >> load_transformed_data_to_s3
+    copy_into_table = S3ToSnowflakeOperator(
+        task_id='copy_into_table',
+        s3_keys=["transformed_data/{{ data_interval_start | ds }}/_Vilnius.csv"],
+        table='SNOWFLAKE_SAMPLE_TABLE',
+        schema=os.getenv("SNOWFLAKE_SCHEMA"),
+        stage='SNOWFLAKE_STAGE',
+        file_format="(type = 'CSV',field_delimiter = ';')",
+        dag=dag,
+    )
+
+    extract_and_upload_raw_data_to_s3 >> transform_data >> load_transformed_data_to_s3 >> copy_into_table
