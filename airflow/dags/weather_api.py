@@ -60,9 +60,7 @@ def get_weather_for_city(**context) -> str:
     api_key = conn.password
     host = conn.host
 
-    endpoint = (
-        f"http://{host}/data/2.5/forecast?cnt=10&lat={lat}&lon={lon}&units=metric&appid={api_key}"
-    )
+    endpoint = f"http://{host}/data/2.5/forecast?cnt=10&lat={lat}&lon={lon}&units=metric&appid={api_key}"
 
     try:
         response = requests.get(url=endpoint)
@@ -74,17 +72,38 @@ def get_weather_for_city(**context) -> str:
 
     return weather_data
 
-def transform_weather_data():
-    response = get_weather_for_city()
-    dataset = json.loads(response)
-    df = pd.json_normalize(dataset['list'])
 
-    df['weather_description'] = df['weather'].apply(lambda x: x[0]['description'] if x else None)
-    df['weather_main'] = df['weather'].apply(lambda x: x[0]['main'] if x else None)
+def transform_weather_data(**context: Any) -> str:
+    """
+    Transforms weather forecast for the city using data from previous task.
 
-    df = df[['dt','dt_txt', 'main.temp', 'weather_description']]
+    Args:
+        **context: Airflow context dictionary
 
-    return df
+    Returns:
+        str: Weather data formatted as CSV string with columns:
+             - dt: Unix timestamp
+             - dt_txt: Human-readable datetime string
+             - main.temp: Temperature value
+             - weather_description: Weather condition description
+    """
+
+    weather_data = context["ti"].xcom_pull(
+        key="return_value", task_ids="get_weather_for_city"
+    )
+    dataset = json.loads(weather_data)
+    df = pd.json_normalize(dataset["list"])
+
+    df["weather_description"] = df["weather"].apply(
+        lambda x: x[0]["description"] if x else None
+    )
+    df["weather_main"] = df["weather"].apply(lambda x: x[0]["main"] if x else None)
+
+    df = df[["dt", "dt_txt", "main.temp", "weather_description"]]
+    csv = df.to_csv(index=False)
+
+    return csv
+
 
 # DAG Config
 DAG_NAME = "weather_monitor"
@@ -92,7 +111,8 @@ DAG_DESCRIPTION = "Gets weather data"
 
 # S3 Config
 S3_BUCKET_NAME = "openweather-api-data"
-S3_FOLDER_NAME = ""
+S3_RAW_DATA_FOLDER = "raw_data"
+S3_CLEANED_DATA_FOLDER = "transformed_data"
 S3_FILE_NAME = ""
 
 default_args = {
@@ -123,18 +143,23 @@ with DAG(
         python_callable=get_lat_lon_for_city,
     )
 
-    get_weather_data = PythonOperator(
+    get_data = PythonOperator(
         task_id="get_weather_for_city",
         python_callable=get_weather_for_city,
     )
 
     upload_raw_data_to_s3 = S3CreateObjectOperator(
-        task_id='upload_raw_data_to_s3',
+        task_id="upload_raw_data_to_s3",
         s3_bucket=S3_BUCKET_NAME,
-        s3_key='raw_data/{{ data_interval_start | ds }}_Vilnius.json',
+        s3_key=f"{S3_RAW_DATA_FOLDER}/{{ data_interval_start | ds }}_Vilnius.json",
         data="{{ ti.xcom_pull(task_ids='get_weather_for_city', key='return_value') }}",
         replace=True,
-        aws_conn_id="aws_default"
+        aws_conn_id="aws_default",
     )
 
-    get_lat_lon >> get_weather_data >> upload_raw_data_to_s3
+    transform_data = PythonOperator(
+        task_id="transform_weather_data",
+        python_callable=transform_weather_data,
+    )
+
+    get_lat_lon >> get_data >> upload_raw_data_to_s3 >> transform_data
