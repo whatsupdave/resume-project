@@ -1,1 +1,1 @@
-# resume-project
+# This project is currently WIP, thus no proper README.md is available as of today.
