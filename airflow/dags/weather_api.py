@@ -124,7 +124,7 @@ def extract_task_group() -> TaskGroup:
     Returns:
         TaskGroup containing Openweathermap data processing tasks
     """
-    with TaskGroup(group_id="extract_openweathermap_api_data") as extract_tasks:
+    with TaskGroup(group_id="extract_and_load_data") as extract_tasks:
         get_lat_lon = PythonOperator(
             task_id="get_lat_lon",
             python_callable=get_lat_lon_for_city,
