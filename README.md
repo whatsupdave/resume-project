@@ -31,8 +31,8 @@ flowchart LR
 ```
 
 **File naming** (per run):  
-- Raw: `raw_data/{{ ds }}_Vilnius.json`  
-- Clean: `transformed_data/{{ ds }}_Vilnius.csv`
+- Raw: `raw_data/{{ data_interval_start | ds }}Vilnius.json`  
+- Clean: `transformed_data/{{ data_interval_start | ds }}_Vilnius.csv`
 
 ---
 
