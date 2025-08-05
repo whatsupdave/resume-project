@@ -89,8 +89,10 @@ def transform_weather_data(**context: Any) -> str:
         str: Weather data formatted as CSV string with columns:
              - dt: Unix timestamp
              - dt_txt: Human-readable datetime string
-             - main.temp: Temperature value
+             - main_temp: Temperature value
              - weather_description: Weather condition description
+             - city_name: Name of the city
+             - city_country: Name of the country
     """
 
     weather_data = context["ti"].xcom_pull(
@@ -139,7 +141,7 @@ def extract_task_group() -> TaskGroup:
     Gets required parameters needed to  call Openweathermap API, gets the data & uploads raw data to S3 bucker
 
     Returns:
-        TaskGroup containing Openweathermap data processing tasks
+        TaskGroup containing Openweathermap API data processing tasks
     """
     with TaskGroup(group_id="extract_and_load_data") as extract_tasks:
         get_lat_lon = PythonOperator(
