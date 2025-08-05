@@ -1,8 +1,8 @@
-# Weather → S3 → Snowflake (Airflow + Docker)
+> Status: **WIP** — iterating as I learn and expand the pipeline.
+
+## Weather → S3 → Snowflake (Airflow + Docker)
 
 A small, production-flavored pipeline that fetches **OpenWeather** data for a city (default **Vilnius**), stores **raw JSON** and **clean CSV** in **S3**, then loads it into **Snowflake** via an external stage — all orchestrated by **Apache Airflow**.
-
-> Status: **WIP** — iterating as I learn and expand the pipeline.
 
 ---
 
