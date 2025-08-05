@@ -214,7 +214,7 @@ def load_task_group() -> TaskGroup:
 default_args = {
     "owner": "Eivydas",
     "depends_on_past": False,
-    "start_date": datetime(2023, 9, 25),
+    "start_date": datetime(2025, 7, 7),
     "email_on_failure": False,
     "email": "kantautaseivydas@gmail.com",
     "email_on_retry": False,
