@@ -13,6 +13,8 @@ import pandas as pd
 import requests
 from airflow.hooks.base import BaseHook
 from airflow.utils.task_group import TaskGroup
+from airflow.exceptions import AirflowException
+
 
 # DAG Config
 DAG_NAME = "weather_monitor"
@@ -105,35 +107,44 @@ def transform_weather_data(**context: Any) -> str:
              - city_name: Name of the city
              - city_country: Name of the country
     """
+    try:
+        weather_data = context["ti"].xcom_pull(
+            key="return_value", task_ids="extract_and_load_data.get_weather_for_city"
+        )
 
-    weather_data = context["ti"].xcom_pull(
-        key="return_value", task_ids="extract_and_load_data.get_weather_for_city"
-    )
-    dataset = json.loads(weather_data)
-    df = pd.json_normalize(dataset["list"])
+        if not weather_data:
+            raise AirflowException("No weather data received from upstream task")
 
-    df["weather_description"] = df["weather"].apply(
-        lambda x: x[0]["description"] if x else None
-    )
-    df["weather_main"] = df["weather"].apply(lambda x: x[0]["main"] if x else None)
+        dataset = json.loads(weather_data)
 
-    city_info = dataset["city"]
-    df["city_name"] = city_info["name"]
-    df["city_country"] = city_info["country"]
+        df = pd.json_normalize(dataset["list"])
 
-    df = df[
-        [
-            "dt",
-            "dt_txt",
-            "main.temp",
-            "weather_description",
-            "city_name",
-            "city_country",
-        ]
-    ].rename(columns={"main.temp": "main_temp"})
-    csv = df.to_csv(index=False)
+        df["weather_description"] = df["weather"].apply(
+            lambda x: x[0]["description"] if x else None
+        )
+        df["weather_main"] = df["weather"].apply(lambda x: x[0]["main"] if x else None)
 
-    return csv
+        city_info = dataset["city"]
+        df["city_name"] = city_info["name"]
+        df["city_country"] = city_info["country"]
+
+        df = df[
+            [
+                "dt",
+                "dt_txt",
+                "main.temp",
+                "weather_description",
+                "city_name",
+                "city_country",
+            ]
+        ].rename(columns={"main.temp": "main_temp"})
+
+        csv = df.to_csv(index=False)
+
+        return csv
+
+    except Exception as e:
+        raise AirflowException(f"Weather data transformation failed: {e}")
 
 
 def extract_task_group() -> TaskGroup:
