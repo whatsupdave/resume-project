@@ -28,70 +28,6 @@ S3_CLEANED_DATA_FOLDER = "transformed_data"
 S3_FILE_NAME = ""
 
 
-def get_lat_lon_for_city(city: str = "Vilnius") -> tuple[float, float]:
-    """
-    Gets latitude and longitude for the specified city.
-
-    Args:
-        city: City name to get coordinates for (default: "Vilnius")
-
-    Returns:
-        tuple[float, float]: Latitude and longitude coordinates
-    """
-
-    conn = BaseHook.get_connection(f"openweathermap_default")
-    api_key = conn.password
-    host = conn.host
-    endpoint = f"http://{host}/geo/1.0/direct?q={city}&limit=1&appid={api_key}"
-
-    try:
-        response = requests.get(endpoint)
-        response.raise_for_status()
-    except requests.exceptions.RequestException as e:
-        raise RuntimeError(f"API Call Error: {e}") from e
-
-    data = response.json()
-    if not data:
-        raise ValueError(f"No location found for {city}")
-
-    lat = data[0]["lat"]
-    lon = data[0]["lon"]
-
-    return lat, lon
-
-
-def get_weather_for_city(**context: Any) -> str:
-    """
-    Gets weather forecast for the city using coordinates from previous task.
-
-    Args:
-        **context: Airflow context dictionary
-
-    Returns:
-        str: JSON string containing weather forecast data
-    """
-
-    lat, lon = context["ti"].xcom_pull(
-        key="return_value", task_ids="extract_and_load_data.get_lat_lon"
-    )
-
-    conn = BaseHook.get_connection("openweathermap_default")
-    api_key = conn.password
-    host = conn.host
-
-    endpoint = f"http://{host}/data/2.5/forecast?cnt=10&lat={lat}&lon={lon}&units=metric&appid={api_key}"
-
-    try:
-        response = requests.get(url=endpoint)
-        response.raise_for_status()
-    except requests.exceptions.RequestException as e:
-        raise RuntimeError(f"API Call Error: {e}") from e
-
-    weather_data = response.text
-
-    return weather_data
-
-
 def transform_weather_data(**context: Any) -> str:
     """
     Transforms weather forecast for the city using data from previous task.
@@ -158,32 +94,35 @@ def extract_task_group() -> TaskGroup:
     with TaskGroup(group_id="extract_and_load_data") as extract_tasks:
 
         get_lat_lon = HttpOperator(
-            http_conn_id='openweathermap_default',
+            http_conn_id="openweathermap_default",
             task_id="get_lat_lon",
-            method='GET',
-            endpoint='geo/1.0/direct',
-            response_filter=lambda response: [response.json()[0]["lat"], response.json()[0]["lon"]],
+            method="GET",
+            endpoint="geo/1.0/direct",
+            response_filter=lambda response: [
+                response.json()[0]["lat"],
+                response.json()[0]["lon"],
+            ],
             data={
                 "q": "Vilnius",
                 "limit": 1,
-                "appid": "{{ conn.openweathermap_default.password }}"
+                "appid": "{{ conn.openweathermap_default.password }}",
             },
-            do_xcom_push=True
+            do_xcom_push=True,
         )
 
         get_weather_data = HttpOperator(
-            http_conn_id='openweathermap_default',
+            http_conn_id="openweathermap_default",
             task_id="get_weather_for_city",
-            method='GET',
-            endpoint='data/2.5/forecast',
+            method="GET",
+            endpoint="data/2.5/forecast",
             data={
                 "cnt": 10,
                 "lat": "{{ ti.xcom_pull(key='return_value', task_ids='extract_and_load_data.get_lat_lon')[0] }}",
                 "lon": "{{ ti.xcom_pull(key='return_value', task_ids='extract_and_load_data.get_lat_lon')[1] }}",
                 "units": "metric",
-                "appid": "{{ conn.openweathermap_default.password }}"
+                "appid": "{{ conn.openweathermap_default.password }}",
             },
-            do_xcom_push=True
+            do_xcom_push=True,
         )
 
         load_raw_data_to_s3 = S3CreateObjectOperator(
