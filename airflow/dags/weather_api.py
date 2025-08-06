@@ -168,7 +168,7 @@ def extract_task_group() -> TaskGroup:
         load_raw_data_to_s3 = S3CreateObjectOperator(
             task_id="load_raw_data_to_s3",
             s3_bucket=S3_BUCKET_NAME,
-            s3_key="raw_data/{{ data_interval_start | ds }}_Vilnius.json",
+            s3_key="raw_data/{{ data_interval_end | ds }}_Vilnius.json",
             data="{{ ti.xcom_pull(task_ids='get_weather_for_city', key='return_value') }}",
             replace=True,
             aws_conn_id="aws_default",
@@ -190,7 +190,7 @@ def load_task_group() -> TaskGroup:
         load_transformed_data_to_s3 = S3CreateObjectOperator(
             task_id="load_transformed_data_to_s3",
             s3_bucket=S3_BUCKET_NAME,
-            s3_key="transformed_data/{{ data_interval_start | ds }}_Vilnius.csv",
+            s3_key="transformed_data/{{ data_interval_end | ds }}_Vilnius.csv",
             data="{{ ti.xcom_pull(task_ids='transform_weather_data', key='return_value') }}",
             replace=True,
             aws_conn_id="aws_default",
@@ -199,7 +199,7 @@ def load_task_group() -> TaskGroup:
         load_into_table = CopyFromExternalStageToSnowflakeOperator(
             task_id="load_clean_data_into_table",
             snowflake_conn_id="snowflake_conn_id",
-            files=["{{ data_interval_start | ds }}_Vilnius.csv"],
+            files=["{{ data_interval_end | ds }}_Vilnius.csv"],
             table="weather_data",
             stage="openweather_transformed_stage",
             file_format="(type='CSV', field_delimiter=',', skip_header=1)",
