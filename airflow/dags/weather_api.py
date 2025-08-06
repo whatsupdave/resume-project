@@ -14,6 +14,7 @@ import requests
 from airflow.hooks.base import BaseHook
 from airflow.utils.task_group import TaskGroup
 from airflow.exceptions import AirflowException
+from airflow.providers.http.operators.http import HttpOperator
 
 
 # DAG Config
@@ -149,20 +150,40 @@ def transform_weather_data(**context: Any) -> str:
 
 def extract_task_group() -> TaskGroup:
     """
-    Gets required parameters needed to  call Openweathermap API, gets the data & uploads raw data to S3 bucker
+    Gets required parameters needed to  call Openweathermap API, does the call to the API & uploads raw data to S3 bucker
 
     Returns:
         TaskGroup containing Openweathermap API data processing tasks
     """
     with TaskGroup(group_id="extract_and_load_data") as extract_tasks:
-        get_lat_lon = PythonOperator(
+
+        get_lat_lon = HttpOperator(
+            http_conn_id='openweathermap_default',
             task_id="get_lat_lon",
-            python_callable=get_lat_lon_for_city,
+            method='GET',
+            endpoint='geo/1.0/direct',
+            response_filter=lambda response: [response.json()[0]["lat"], response.json()[0]["lon"]],
+            data={
+                "q": "Vilnius",
+                "limit": 1,
+                "appid": "{{ conn.openweathermap_default.password }}"
+            },
+            do_xcom_push=True
         )
 
-        get_weather_data = PythonOperator(
+        get_weather_data = HttpOperator(
+            http_conn_id='openweathermap_default',
             task_id="get_weather_for_city",
-            python_callable=get_weather_for_city,
+            method='GET',
+            endpoint='data/2.5/forecast',
+            data={
+                "cnt": 10,
+                "lat": "{{ ti.xcom_pull(key='return_value', task_ids='extract_and_load_data.get_lat_lon')[0] }}",
+                "lon": "{{ ti.xcom_pull(key='return_value', task_ids='extract_and_load_data.get_lat_lon')[1] }}",
+                "units": "metric",
+                "appid": "{{ conn.openweathermap_default.password }}"
+            },
+            do_xcom_push=True
         )
 
         load_raw_data_to_s3 = S3CreateObjectOperator(
