@@ -59,7 +59,7 @@ def get_lat_lon_for_city(city: str = "Vilnius") -> tuple[float, float]:
     return lat, lon
 
 
-def get_weather_for_city(**context) -> str:
+def get_weather_for_city(**context: Any) -> str:
     """
     Gets weather forecast for the city using coordinates from previous task.
 
