@@ -181,7 +181,7 @@ def extract_task_group() -> TaskGroup:
 
 def load_task_group() -> TaskGroup:
     """
-    Gets cleaned data from upstream task XCOM, then loads to Amazon S3 and Snowflake weather_data bucker
+    Gets cleaned data from upstream task XCOM, then loads to Amazon S3 and Snowflake weather_data bucket
 
     Returns:
         TaskGroup containing cleaned data load tasks
@@ -228,7 +228,7 @@ with DAG(
     default_args=default_args,
     description=DAG_DESCRIPTION,
     tags=["placeholder"],
-    start_date=datetime(2023, 9, 25),
+    start_date=datetime(2025, 7, 7),
     schedule="0 5 * * *",
     max_active_runs=1,
     catchup=False,
