@@ -1,20 +1,19 @@
-from airflow import DAG
+import json
+from datetime import datetime, timedelta
+from typing import Any, Dict, List, Optional, Tuple, Union
 
+import pandas as pd
+
+from airflow import DAG
+from airflow.exceptions import AirflowException
 from airflow.operators.python import PythonOperator
+from airflow.utils.task_group import TaskGroup
+
 from airflow.providers.amazon.aws.operators.s3 import S3CreateObjectOperator
+from airflow.providers.http.operators.http import HttpOperator
 from airflow.providers.snowflake.transfers.copy_into_snowflake import (
     CopyFromExternalStageToSnowflakeOperator,
 )
-from datetime import datetime, timedelta
-from typing import Dict, List, Tuple, Any, Optional, Union
-import json
-import pandas as pd
-
-import requests
-from airflow.hooks.base import BaseHook
-from airflow.utils.task_group import TaskGroup
-from airflow.exceptions import AirflowException
-from airflow.providers.http.operators.http import HttpOperator
 
 
 # DAG Config
