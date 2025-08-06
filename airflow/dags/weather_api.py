@@ -3,6 +3,7 @@ from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional, Tuple, Union
 
 import pandas as pd
+from pydantic import BaseModel, ValidationError
 
 from airflow import DAG
 from airflow.exceptions import AirflowException
@@ -15,7 +16,6 @@ from airflow.providers.snowflake.transfers.copy_into_snowflake import (
     CopyFromExternalStageToSnowflakeOperator,
 )
 
-
 # DAG Config
 DAG_NAME = "weather_monitor"
 DAG_DESCRIPTION = "Gets weather data"
@@ -25,6 +25,15 @@ S3_BUCKET_NAME = "openweather-api-data"
 S3_RAW_DATA_FOLDER = "raw_data"
 S3_CLEANED_DATA_FOLDER = "transformed_data"
 S3_FILE_NAME = ""
+
+
+class ColumnsCheck(BaseModel):
+    city_country: str
+    city_name: str
+    dt: int
+    dt_txt: str
+    main_temp: float
+    weather_description: str
 
 
 def transform_weather_data(**context: Any) -> str:
@@ -77,11 +86,17 @@ def transform_weather_data(**context: Any) -> str:
             ]
         ].rename(columns={"main.temp": "main_temp"})
 
-        temp_min, temp_max = df["main.temp"].min(), df["main.temp"].max()
+        temp_min, temp_max = df["main_temp"].min(), df["main_temp"].max()
         if temp_min < -50 or temp_max > 60:
             raise AirflowException(
                 f"Unrealistic temperatures: {temp_min}°C to {temp_max}°C"
             )
+
+        for _, row in df.iterrows():
+            try:
+                ColumnsCheck(**row.to_dict())
+            except ValidationError as e:
+                raise AirflowException(f"Row validation failed: {e}")
 
         csv = df.to_csv(index=False)
         return csv
