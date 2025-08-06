@@ -52,8 +52,10 @@ def transform_weather_data(**context: Any) -> str:
             raise AirflowException("No weather data received from upstream task")
 
         dataset = json.loads(weather_data)
-
         df = pd.json_normalize(dataset["list"])
+
+        if len(df) == 0:
+            raise AirflowException("No weather records in API response")
 
         df["weather_description"] = df["weather"].apply(
             lambda x: x[0]["description"] if x else None
@@ -75,8 +77,13 @@ def transform_weather_data(**context: Any) -> str:
             ]
         ].rename(columns={"main.temp": "main_temp"})
 
-        csv = df.to_csv(index=False)
+        temp_min, temp_max = df["main.temp"].min(), df["main.temp"].max()
+        if temp_min < -50 or temp_max > 60:
+            raise AirflowException(
+                f"Unrealistic temperatures: {temp_min}°C to {temp_max}°C"
+            )
 
+        csv = df.to_csv(index=False)
         return csv
 
     except Exception as e:
