@@ -5,8 +5,6 @@ logs/
 .DS_Store
 **/.DS_Store
 Dockerfile
-stupid-test.ipynb
-local_test
 .venv
 .venv1
 .idea
