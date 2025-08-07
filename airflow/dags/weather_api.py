@@ -105,9 +105,11 @@ def transform_weather_data(**context: Any) -> str:
         raise AirflowException(f"Weather data transformation failed: {e}")
 
 
-def extract_task_group() -> TaskGroup:
+def extract_task_group(city: str = 'Vilnius') -> TaskGroup:
     """
     Gets required parameters needed to  call Openweathermap API, does the call to the API & uploads raw data to S3 bucker
+    Args:
+        Name of the city to get weather data. Default is Vilnius
 
     Returns:
         TaskGroup containing Openweathermap API data processing tasks
@@ -124,7 +126,7 @@ def extract_task_group() -> TaskGroup:
                 response.json()[0]["lon"],
             ],
             data={
-                "q": "Vilnius",
+                "q": f"{city}",
                 "limit": 1,
                 "appid": "{{ conn.openweathermap_default.password }}",
             },
