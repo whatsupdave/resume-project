@@ -1,13 +1,15 @@
 import sys
 import os
+import json
+import pytest
 
 sys.path.append(os.path.join(os.path.dirname(__file__), "..", "dags"))
 from weather_api import transform_weather_data
-import json
+from airflow.exceptions import AirflowException
 
-def test_transform_weather_data(mocker):
-    mock_ti = mocker.Mock()
-    mock_ti.xcom_pull.return_value = json.dumps({
+
+@pytest.mark.parametrize("mock_data,expected", [
+    (json.dumps({
         "cod": "200",
         "message": 0,
         "cnt": 10,
@@ -51,7 +53,18 @@ def test_transform_weather_data(mocker):
             "sunrise": 1754620903,
             "sunset": 1754676443,
         },
-    })
-    result_csv = transform_weather_data(ti=mock_ti)
-    assert "main_temp" in result_csv
-    assert len(result_csv.split('\n')) > 1
+    }), "success"),
+    ('', "exception")
+])
+
+
+def test_transform_weather_data(mocker, mock_data, expected):
+    mock_ti = mocker.Mock()
+    mock_ti.xcom_pull.return_value = mock_data
+    if expected == "exception":
+        with pytest.raises(AirflowException):
+            transform_weather_data(ti=mock_ti)
+    else:
+        result_csv = transform_weather_data(ti=mock_ti)
+        assert "main_temp" in result_csv
+        assert len(result_csv.split('\n')) > 1
