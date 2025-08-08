@@ -67,6 +67,13 @@ docker-compose logs -f airflow-scheduler
 - Slack failure callback with formatted error messages and log links
 - Handles container logs and traceback information
 
+### Testing (`airflow/tests/test_weather_api.py`)
+- **Pytest setup**: Unit tests with pytest-mock for XCom simulation
+- **Transform function tests**: Mocks weather API JSON responses for transformation validation
+- **Exception testing**: Validates AirflowException handling for empty/invalid data
+- **Clean imports**: Organized following PEP 8 standards (standard → third-party → local)
+- **Parametrized tests**: Single test function handles both success and failure scenarios
+
 ### File Naming Convention
 - Raw files: `raw_data/YYYY-MM-DD_Vilnius.json`
 - Clean files: `transformed_data/YYYY-MM-DD_Vilnius.csv`
@@ -90,10 +97,12 @@ This project needs further development to match real-world production standards:
 - **Infrastructure as Code**: Terraform/CloudFormation for reproducible deployments
 - **Container Orchestration**: Kubernetes deployment patterns
 
-### CI/CD Pipeline
-- **Version Control**: Git workflows, branching strategies, semantic versioning  
-- **Automated Testing**: Unit tests for transformation functions, integration tests, DAG validation
-- **Quality Gates**: Code coverage, linting, security scanning
+### CI/CD Pipeline - **CURRENT FOCUS**
+- **Automated Testing**: ✅ Unit tests implemented with pytest for transformation functions
+- **Next Steps**: GitHub Actions workflow for automated testing and deployment
+- **Quality Gates**: Code coverage reporting, linting (black, flake8), security scanning
+- **DAG Validation**: Automated syntax checking and import testing
+- **Version Control**: Git workflows, branching strategies, semantic versioning
 - **Deployment Automation**: Blue-green deployments, rollback strategies
 
 ### Observability & Reliability

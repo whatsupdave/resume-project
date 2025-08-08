@@ -43,3 +43,22 @@ flowchart LR
 - **Snowflake**: external stage `openweather_transformed_stage` → table `weather_data`
 
 ---
+
+## Testing
+
+**Unit tests** implemented with **pytest** for transformation logic:
+
+```bash
+# Run tests
+pytest airflow/tests/
+
+# Run specific test file
+pytest airflow/tests/test_weather_api.py -v
+```
+
+**Test coverage:**
+- Transform function validation with mocked XCom data
+- Exception handling for empty/invalid API responses  
+- Parametrized tests for success/failure scenarios
+
+---
