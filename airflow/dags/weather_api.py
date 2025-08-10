@@ -1,6 +1,6 @@
 import json
 from datetime import datetime, timedelta
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any
 
 import pandas as pd
 from pydantic import BaseModel, ValidationError
@@ -109,7 +109,9 @@ def transform_weather_data(city: str, **context: Any) -> str:
 
 def extract_task_group(city: str) -> TaskGroup:
     """
-    Gets required parameters needed to  call Openweathermap API, does the call to the API & uploads raw data to S3 bucker
+    Gets required parameters needed to  call Openweathermap API,
+    does the call to the API & uploads raw data to S3 bucket
+
     Args:
         city: Name of the city to get weather data.
     Returns:
@@ -141,8 +143,10 @@ def extract_task_group(city: str) -> TaskGroup:
             endpoint="data/2.5/forecast",
             data={
                 "cnt": 10,
-                "lat": f"{{{{ ti.xcom_pull(key='return_value', task_ids='{city}.{city}_extract_and_load_data.get_lat_lon')[0] }}}}",
-                "lon": f"{{{{ ti.xcom_pull(key='return_value', task_ids='{city}.{city}_extract_and_load_data.get_lat_lon')[1] }}}}",
+                "lat": f"{{{{ ti.xcom_pull(key='return_value',"
+                f"task_ids='{city}.{city}_extract_and_load_data.get_lat_lon')[0] }}}}",
+                "lon": f"{{{{ ti.xcom_pull(key='return_value',"
+                f"task_ids='{city}.{city}_extract_and_load_data.get_lat_lon')[1] }}}}",
                 "units": "metric",
                 "appid": "{{ conn.openweathermap_default.password }}",
             },
@@ -155,7 +159,9 @@ def extract_task_group(city: str) -> TaskGroup:
             s3_key=S3_RAW_DATA_FOLDER
             + "/{{ data_interval_end | ds }}"
             + f"_{city}.json",
-            data=f"{{{{ ti.xcom_pull(task_ids='{city}.{city}_extract_and_load_data.get_weather_for_city', key='return_value') }}}}",
+            data=f"{{{{ ti.xcom_pull("
+            f"task_ids='{city}.{city}_extract_and_load_data.get_weather_for_city',"
+            f"key='return_value') }}}}",
             replace=True,
             aws_conn_id="aws_default",
         )
@@ -179,7 +185,9 @@ def load_task_group(city: str) -> TaskGroup:
             s3_key=S3_CLEANED_DATA_FOLDER
             + "/{{ data_interval_end | ds }}"
             + f"_{city}.csv",
-            data=f"{{{{ ti.xcom_pull(task_ids='{city}.{city}_transform_weather_data', key='return_value') }}}}",
+            data=f"{{{{ ti.xcom_pull("
+            f"task_ids='{city}.{city}_transform_weather_data',"
+            f"key='return_value') }}}}",
             replace=True,
             aws_conn_id="aws_default",
         )
@@ -224,17 +232,17 @@ with DAG(
 
     cities = ["Vilnius", "Riga", "Tallinn"]
 
-    for city in cities:
-        with TaskGroup(group_id=f"{city}") as source_group:
-            extract_and_upload_raw_data_to_s3 = extract_task_group(city)
+    for town in cities:
+        with TaskGroup(group_id=f"{town}") as source_group:
+            extract_and_upload_raw_data_to_s3 = extract_task_group(town)
 
             transform_data = PythonOperator(
-                task_id=f"{city}_transform_weather_data",
+                task_id=f"{town}_transform_weather_data",
                 python_callable=transform_weather_data,
-                op_kwargs={"city": city},
+                op_kwargs={"town": town},
             )
 
-            load_data_to_s3_and_snowflake = load_task_group(city)
+            load_data_to_s3_and_snowflake = load_task_group(town)
 
         (
             extract_and_upload_raw_data_to_s3
