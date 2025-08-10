@@ -36,11 +36,12 @@ class ColumnsCheck(BaseModel):
     weather_description: str
 
 
-def transform_weather_data(**context: Any) -> str:
+def transform_weather_data(city: str, **context: Any) -> str:
     """
     Transforms weather forecast for the city using data from previous task.
 
     Args:
+        city: Name of the city to get weather data and transform.
         **context: Airflow context dictionary
 
     Returns:
@@ -54,7 +55,8 @@ def transform_weather_data(**context: Any) -> str:
     """
     try:
         weather_data = context["ti"].xcom_pull(
-            key="return_value", task_ids="extract_and_load_data.get_weather_for_city"
+            key="return_value",
+            task_ids=f"{city}.{city}_extract_and_load_data.get_weather_for_city",
         )
 
         if not weather_data:
@@ -109,8 +111,7 @@ def extract_task_group(city: str) -> TaskGroup:
     """
     Gets required parameters needed to  call Openweathermap API, does the call to the API & uploads raw data to S3 bucker
     Args:
-        Name of the city to get weather data. Default is Vilnius
-
+        city: Name of the city to get weather data.
     Returns:
         TaskGroup containing Openweathermap API data processing tasks
     """
@@ -152,9 +153,9 @@ def extract_task_group(city: str) -> TaskGroup:
             task_id="load_raw_data_to_s3",
             s3_bucket=S3_BUCKET_NAME,
             s3_key=S3_RAW_DATA_FOLDER
-            + "{{ data_interval_end | ds }}"
+            + "/{{ data_interval_end | ds }}"
             + f"_{city}.json",
-            data="{{ ti.xcom_pull(task_ids='get_weather_for_city', key='return_value') }}",
+            data=f"{{{{ ti.xcom_pull(task_ids='{city}.{city}_extract_and_load_data.get_weather_for_city', key='return_value') }}}}",
             replace=True,
             aws_conn_id="aws_default",
         )
@@ -175,11 +176,10 @@ def load_task_group(city: str) -> TaskGroup:
         load_transformed_data_to_s3 = S3CreateObjectOperator(
             task_id="load_transformed_data_to_s3",
             s3_bucket=S3_BUCKET_NAME,
-            # s3_key="transformed_data/{{ data_interval_end | ds }}_Vilnius.csv",
             s3_key=S3_CLEANED_DATA_FOLDER
-            + "{{ data_interval_end | ds }}_"
+            + "/{{ data_interval_end | ds }}"
             + f"_{city}.csv",
-            data="{{ ti.xcom_pull(task_ids='transform_weather_data', key='return_value') }}",
+            data=f"{{{{ ti.xcom_pull(task_ids='{city}.{city}_transform_weather_data', key='return_value') }}}}",
             replace=True,
             aws_conn_id="aws_default",
         )
@@ -187,7 +187,7 @@ def load_task_group(city: str) -> TaskGroup:
         load_into_table = CopyFromExternalStageToSnowflakeOperator(
             task_id="load_clean_data_into_table",
             snowflake_conn_id="snowflake_conn_id",
-            files=["{{ data_interval_end | ds }}_Vilnius.csv"],
+            files=[f"{{{{ data_interval_end | ds }}}}_{city}.csv"],
             table="weather_data",
             stage="openweather_transformed_stage",
             file_format="(type='CSV', field_delimiter=',', skip_header=1)",
@@ -231,6 +231,7 @@ with DAG(
             transform_data = PythonOperator(
                 task_id=f"{city}_transform_weather_data",
                 python_callable=transform_weather_data,
+                op_kwargs={"city": city},
             )
 
             load_data_to_s3_and_snowflake = load_task_group(city)
