@@ -105,7 +105,7 @@ def transform_weather_data(**context: Any) -> str:
         raise AirflowException(f"Weather data transformation failed: {e}")
 
 
-def extract_task_group(city: str = 'Vilnius') -> TaskGroup:
+def extract_task_group(city: str) -> TaskGroup:
     """
     Gets required parameters needed to  call Openweathermap API, does the call to the API & uploads raw data to S3 bucker
     Args:
@@ -114,7 +114,7 @@ def extract_task_group(city: str = 'Vilnius') -> TaskGroup:
     Returns:
         TaskGroup containing Openweathermap API data processing tasks
     """
-    with TaskGroup(group_id="extract_and_load_data") as extract_tasks:
+    with TaskGroup(group_id=f"{city}_extract_and_load_data") as extract_tasks:
 
         get_lat_lon = HttpOperator(
             http_conn_id="openweathermap_default",
@@ -140,8 +140,8 @@ def extract_task_group(city: str = 'Vilnius') -> TaskGroup:
             endpoint="data/2.5/forecast",
             data={
                 "cnt": 10,
-                "lat": "{{ ti.xcom_pull(key='return_value', task_ids='extract_and_load_data.get_lat_lon')[0] }}",
-                "lon": "{{ ti.xcom_pull(key='return_value', task_ids='extract_and_load_data.get_lat_lon')[1] }}",
+                "lat": f"{{{{ ti.xcom_pull(key='return_value', task_ids='{city}.{city}_extract_and_load_data.get_lat_lon')[0] }}}}",
+                "lon": f"{{{{ ti.xcom_pull(key='return_value', task_ids='{city}.{city}_extract_and_load_data.get_lat_lon')[1] }}}}",
                 "units": "metric",
                 "appid": "{{ conn.openweathermap_default.password }}",
             },
@@ -151,7 +151,9 @@ def extract_task_group(city: str = 'Vilnius') -> TaskGroup:
         load_raw_data_to_s3 = S3CreateObjectOperator(
             task_id="load_raw_data_to_s3",
             s3_bucket=S3_BUCKET_NAME,
-            s3_key="raw_data/{{ data_interval_end | ds }}_Vilnius.json",
+            s3_key=S3_RAW_DATA_FOLDER
+            + "{{ data_interval_end | ds }}"
+            + f"_{city}.json",
             data="{{ ti.xcom_pull(task_ids='get_weather_for_city', key='return_value') }}",
             replace=True,
             aws_conn_id="aws_default",
@@ -162,18 +164,21 @@ def extract_task_group(city: str = 'Vilnius') -> TaskGroup:
     return extract_tasks
 
 
-def load_task_group() -> TaskGroup:
+def load_task_group(city: str) -> TaskGroup:
     """
     Gets cleaned data from upstream task XCOM, then loads to Amazon S3 and Snowflake weather_data bucket
 
     Returns:
         TaskGroup containing cleaned data load tasks
     """
-    with TaskGroup(group_id="load_data_to_s3_and_snowflake") as load_tasks:
+    with TaskGroup(group_id=f"{city}_load_data_to_s3_and_snowflake") as load_tasks:
         load_transformed_data_to_s3 = S3CreateObjectOperator(
             task_id="load_transformed_data_to_s3",
             s3_bucket=S3_BUCKET_NAME,
-            s3_key="transformed_data/{{ data_interval_end | ds }}_Vilnius.csv",
+            # s3_key="transformed_data/{{ data_interval_end | ds }}_Vilnius.csv",
+            s3_key=S3_CLEANED_DATA_FOLDER
+            + "{{ data_interval_end | ds }}_"
+            + f"_{city}.csv",
             data="{{ ti.xcom_pull(task_ids='transform_weather_data', key='return_value') }}",
             replace=True,
             aws_conn_id="aws_default",
@@ -217,17 +222,21 @@ with DAG(
     catchup=False,
 ) as dag:
 
-    extract_and_upload_raw_data_to_s3 = extract_task_group()
+    cities = ["Vilnius", "Riga", "Tallinn"]
 
-    transform_data = PythonOperator(
-        task_id="transform_weather_data",
-        python_callable=transform_weather_data,
-    )
+    for city in cities:
+        with TaskGroup(group_id=f"{city}") as source_group:
+            extract_and_upload_raw_data_to_s3 = extract_task_group(city)
 
-    load_data_to_s3_and_snowflake = load_task_group()
+            transform_data = PythonOperator(
+                task_id=f"{city}_transform_weather_data",
+                python_callable=transform_weather_data,
+            )
 
-    (
-        extract_and_upload_raw_data_to_s3
-        >> transform_data
-        >> load_data_to_s3_and_snowflake
-    )
+            load_data_to_s3_and_snowflake = load_task_group(city)
+
+        (
+            extract_and_upload_raw_data_to_s3
+            >> transform_data
+            >> load_data_to_s3_and_snowflake
+        )
