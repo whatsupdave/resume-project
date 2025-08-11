@@ -38,7 +38,7 @@ flowchart LR
 
 ## Stack
 
-- **Apache Airflow 2.9.3** (LocalExecutor) + **Postgres 13** (Airflow metadata)  
+- **Apache Airflow 2.9.2** (LocalExecutor) + **Postgres 13** (Airflow metadata)  
 - **AWS S3** bucket: `openweather-api-data`  
 - **Snowflake**: external stage `openweather_transformed_stage` → table `weather_data`
 
