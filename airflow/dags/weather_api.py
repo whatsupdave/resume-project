@@ -1,3 +1,15 @@
+"""
+Weather Data Pipeline DAG
+
+This module contains the Apache Airflow DAG for extracting weather forecast data
+from OpenWeather API, processing it, and loading it into S3 and Snowflake.
+
+DAG Schedule: Daily at 05:00 UTC
+Data Sources: OpenWeather API (geocoding + forecast endpoints)
+Storage: S3 bucket with raw and transformed data
+Warehouse: Snowflake weather_data table
+"""
+
 import json
 from datetime import datetime, timedelta
 from typing import Any
@@ -28,6 +40,18 @@ S3_FILE_NAME = ""
 
 
 class ColumnsCheck(BaseModel):
+    """
+    Pydantic model for validating weather data columns.
+
+    Attributes:
+        city_country: Country name
+        city_name: City name
+        dt: Unix timestamp
+        dt_txt: Human-readable datetime string
+        main_temp: Temperature value in Celsius
+        weather_description: Weather condition description
+    """
+
     city_country: str
     city_name: str
     dt: int
@@ -67,6 +91,8 @@ def transform_weather_data(city: str, **context: Any) -> str:
 
         if len(df) == 0:
             raise AirflowException("No weather records in API response")
+        if df is None:
+            raise AirflowException("DataFrame is None - data loading failed")
 
         df["weather_description"] = df["weather"].apply(
             lambda x: x[0]["description"] if x else None
@@ -98,13 +124,13 @@ def transform_weather_data(city: str, **context: Any) -> str:
             try:
                 ColumnsCheck(**row.to_dict())
             except ValidationError as e:
-                raise AirflowException(f"Row validation failed: {e}")
+                raise AirflowException(f"Row validation failed: {e}") from e
 
         csv = df.to_csv(index=False)
         return csv
 
     except Exception as e:
-        raise AirflowException(f"Weather data transformation failed: {e}")
+        raise AirflowException(f"Weather data transformation failed: {e}") from e
 
 
 def extract_task_group(city: str) -> TaskGroup:
@@ -173,7 +199,8 @@ def extract_task_group(city: str) -> TaskGroup:
 
 def load_task_group(city: str) -> TaskGroup:
     """
-    Gets cleaned data from upstream task XCOM, then loads to Amazon S3 and Snowflake weather_data bucket
+    Gets cleaned data from upstream task XCOM,
+    then loads to Amazon S3 and Snowflake weather_data bucket
 
     Returns:
         TaskGroup containing cleaned data load tasks
@@ -239,7 +266,7 @@ with DAG(
             transform_data = PythonOperator(
                 task_id=f"{town}_transform_weather_data",
                 python_callable=transform_weather_data,
-                op_kwargs={"town": town},
+                op_kwargs={"city": town},
             )
 
             load_data_to_s3_and_snowflake = load_task_group(town)
