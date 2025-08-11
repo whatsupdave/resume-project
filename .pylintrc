@@ -1,0 +1,77 @@
+[MASTER]
+# Add airflow to Python path for import resolution
+init-hook='import sys; sys.path.append("/usr/local/airflow")'
+
+# Files or directories to be skipped
+ignore=CVS
+ignore-paths=
+
+# Use multiple processes to speed up Pylint
+jobs=1
+
+# Pickle collected data for later comparisons
+persistent=yes
+
+# Minimum Python version to use for version dependent checks
+py-version=3.10
+
+[MESSAGES CONTROL]
+# Disable specific warnings for Airflow compatibility
+disable=
+    import-error,           # Airflow has complex import structure
+    no-name-in-module,      # Airflow modules loaded dynamically
+    unexpected-keyword-arg, # Airflow classes accept many dynamic kwargs
+    pointless-statement,    # Task dependency chains (>>) are valid
+    wrong-import-position,  # Airflow imports often need sys.path modifications
+    wrong-import-order,     # Test files need local imports after sys.path
+    broad-exception-caught, # Sometimes necessary for error handling
+    too-many-locals,        # Airflow functions often need many variables
+
+[REPORTS]
+# Set the output format
+output-format=text
+
+# Include message's id in output (deprecated, now default)
+
+# Template used to display messages
+msg-template={path}:{line}:{column}: {msg_id}: {msg} ({symbol})
+
+[REFACTORING]
+# Maximum number of nested blocks for function / method body
+max-nested-blocks=5
+
+[FORMAT]
+# Maximum number of characters on a single line
+max-line-length=100
+
+# Maximum number of lines in a module
+max-module-lines=1000
+
+[VARIABLES]
+# List of additional names supposed to be defined in builtins
+additional-builtins=
+
+[CLASSES]
+# List of method names used to declare (i.e. assign) instance attributes
+defining-attr-methods=__init__,__new__,setUp,__post_init__
+
+[DESIGN]
+# Maximum number of arguments for function / method
+max-args=10
+
+# Maximum number of attributes for a class
+max-attributes=15
+
+# Minimum number of public methods for a class
+min-public-methods=1
+
+# Maximum number of public methods for a class
+max-public-methods=25
+
+[IMPORTS]
+# Deprecated modules which should not be used
+deprecated-modules=regsub,TERMIOS,Bastion,rexec
+
+[EXCEPTIONS]
+# Exceptions that will emit a warning when being caught
+overgeneral-exceptions=builtins.BaseException,builtins.Exception

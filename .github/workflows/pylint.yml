@@ -17,4 +17,4 @@ jobs:
         pip install pylint pytest apache-airflow pandas pydantic apache-airflow-providers-amazon apache-airflow-providers-http apache-airflow-providers-snowflake apache-airflow-providers-slack
     - name: Analysing the code with pylint
       run: |
-        pylint $(git ls-files '*.py') --fail-under=9.0
+        pylint $(git ls-files '*.py') --rcfile=.pylintrc --fail-under=9.0
