@@ -1,9 +1,16 @@
-from typing import Dict, Any, Optional
-from airflow.providers.slack.operators.slack import SlackAPIPostOperator
-from airflow.models import TaskInstance, DagRun, DAG
-from urllib.parse import quote
+"""
+Slack notification helper for Airflow DAG failures.
+
+This module provides callback functions for sending formatted Slack notifications
+when Airflow tasks fail, including error details and log links.
+"""
+
 import traceback
-from airflow.models import Variable
+from typing import Dict, Any, Optional
+from urllib.parse import quote
+
+from airflow.models import TaskInstance, DagRun, DAG, Variable
+from airflow.providers.slack.operators.slack import SlackAPIPostOperator
 
 
 def slack_failure_callback(context: Dict[str, Any]) -> None:
@@ -23,7 +30,10 @@ def slack_failure_callback(context: Dict[str, Any]) -> None:
     webserver_url: str = Variable.get(
         "airflow_url", default_var="http://localhost:7277"
     )
-    log_url: str = f"{webserver_url}/log?dag_id={dag_id}&task_id={task_id}&execution_date={quote(execution_date)}"
+    log_url: str = (
+        f"{webserver_url}/log?dag_id={dag_id}&task_id={task_id}"
+        f"&execution_date={quote(execution_date)}"
+    )
 
     container_output: str = "No container logs available"
     try:
