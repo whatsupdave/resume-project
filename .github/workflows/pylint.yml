@@ -1,14 +1,14 @@
 name: Pylint
 
-on: [push]
+on: [push, pull_request]
 
 jobs:
-  build:
+  pylint:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
     - name: Set up Python 3.10
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@v5
       with:
         python-version: "3.10"
     - name: Install dependencies
@@ -17,4 +17,4 @@ jobs:
         pip install pylint pytest apache-airflow pandas pydantic apache-airflow-providers-amazon apache-airflow-providers-http apache-airflow-providers-snowflake apache-airflow-providers-slack
     - name: Analysing the code with pylint
       run: |
-        pylint $(git ls-files '*.py') --exit-zero
+        pylint $(git ls-files '*.py') --fail-under=9.0
