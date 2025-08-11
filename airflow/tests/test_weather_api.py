@@ -62,7 +62,7 @@ from weather_api import transform_weather_data
             ),
             "success",
         ),
-        ("", "exception"),
+        ("None", "exception"),
     ],
 )
 def test_transform_weather_data(mocker, mock_data, expected):
@@ -70,8 +70,8 @@ def test_transform_weather_data(mocker, mock_data, expected):
     mock_ti.xcom_pull.return_value = mock_data
     if expected == "exception":
         with pytest.raises(AirflowException):
-            transform_weather_data(ti=mock_ti)
+            transform_weather_data(ti=mock_ti, city = 'Vilnius')
     else:
-        result_csv = transform_weather_data(ti=mock_ti)
+        result_csv = transform_weather_data(ti=mock_ti, city = 'Vilnius')
         assert "main_temp" in result_csv
         assert len(result_csv.split("\n")) > 1
