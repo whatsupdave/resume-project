@@ -27,7 +27,7 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install pylint pytest pytest-mock pytest-md pytest-emoji
+          pip install pytest pytest-mock pytest-md pytest-emoji
           pip install -r airflow/requirements/requirements.txt
 
       - uses: pavelzw/pytest-action@v2
