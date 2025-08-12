@@ -75,8 +75,8 @@ docker-compose logs -f airflow-scheduler
 - **Parametrized tests**: Single test function handles both success and failure scenarios
 
 ### File Naming Convention
-- Raw files: `raw_data/YYYY-MM-DD_Vilnius.json`
-- Clean files: `transformed_data/YYYY-MM-DD_Vilnius.csv`
+- Raw files: `raw_data/{{ data_interval_start | ds }}_{city}.json`
+- Transformed files: `transformed_data/{{ data_interval_start | ds }}_{city}.csv`
 
 ## Key Development Notes
 
@@ -97,13 +97,15 @@ This project needs further development to match real-world production standards:
 - **Infrastructure as Code**: Terraform/CloudFormation for reproducible deployments
 - **Container Orchestration**: Kubernetes deployment patterns
 
-### CI/CD Pipeline - **CURRENT FOCUS**
-- **Automated Testing**: ✅ Unit tests implemented with pytest for transformation functions
-- **Next Steps**: GitHub Actions workflow for automated testing and deployment
-- **Quality Gates**: Code coverage reporting, linting (black, flake8), security scanning
-- **DAG Validation**: Automated syntax checking and import testing
-- **Version Control**: Git workflows, branching strategies, semantic versioning
-- **Deployment Automation**: Blue-green deployments, rollback strategies
+### CI/CD Pipeline - **PRODUCTION READY** ✅
+- **Automated Testing**: ✅ Unit tests with pytest + automated CI workflow  
+- **Code Quality**: ✅ Pylint with 9.0+ threshold and Airflow-specific configuration
+- **Security Scanning**: ✅ GitHub CodeQL for vulnerability detection
+- **Dependency Management**: ✅ Airflow constraints for stable, conflict-free dependencies
+- **Quality Gates**: ✅ All PRs require passing tests, code quality, and security checks
+- **GitHub Actions**: ✅ Separated workflows for testing and linting with proper dependency management
+- **DAG Validation**: 🟡 Next enhancement (syntax checking and import testing)
+- **Professional Setup**: ✅ .pylintrc, requirements.txt with constraints, proper project structure
 
 ### Observability & Reliability
 - **Monitoring**: Metrics collection, alerting, SLA tracking
