@@ -12,7 +12,7 @@ import sys
 import pytest
 
 sys.path.append(os.path.join(os.path.dirname(__file__), "..", "dags"))
-from weather_api import transform_weather_data  # pylint: disable=import-error,wrong-import-position
+from weather_api import transform_weather_data
 
 from airflow.exceptions import AirflowException
 
@@ -71,6 +71,7 @@ from airflow.exceptions import AirflowException
             "success",
         ),
         ("None", "exception"),
+        (None, "exception")
     ],
 )
 def test_transform_weather_data(mocker, mock_data, expected):
