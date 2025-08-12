@@ -1,14 +1,13 @@
-apache-airflow==2.9.2
+# Airflow constraints for dependency compatibility
+--constraint https://raw.githubusercontent.com/apache/airflow/constraints-2.9.2/constraints-3.10.txt
 
+apache-airflow==2.9.2
 apache-airflow-providers-amazon>=8.0.0
 apache-airflow-providers-http>=4.0.0
 apache-airflow-providers-snowflake>=5.0.0
 apache-airflow-providers-slack>=7.0.0
-
 pandas>=2.0.0
 pydantic>=2.0.0
-
 pytest>=7.0.0
 pytest-mock>=3.10.0
-
 pylint>=3.0.0
