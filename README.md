@@ -31,8 +31,8 @@ flowchart LR
 ```
 
 **File naming** (per run):  
-- Raw: `raw_data/{{ data_interval_start | ds }}Vilnius.json`  
-- Clean: `transformed_data/{{ data_interval_start | ds }}_Vilnius.csv`
+- Raw: `raw_data/{{ data_interval_start | ds }}_{city}.json`  
+- Transformed: `transformed_data/{{ data_interval_start | ds }}_{city}.csv`
 
 ---
 
@@ -44,21 +44,40 @@ flowchart LR
 
 ---
 
-## Testing
+## CI/CD & Quality Assurance
 
-**Unit tests** implemented with **pytest** for transformation logic:
+**Automated CI/CD Pipeline** with GitHub Actions:
+
+### 🧪 **Testing Workflow**
+- **Unit tests** with pytest for transformation logic
+- **Automated test execution** on every push/PR
+- **Coverage tracking** for test completeness
 
 ```bash
-# Run tests
-pytest airflow/tests/
-
-# Run specific test file
-pytest airflow/tests/test_weather_api.py -v
+# Local testing
+pytest airflow/tests/ -v
 ```
 
-**Test coverage:**
-- Transform function validation with mocked XCom data
-- Exception handling for empty/invalid API responses  
-- Parametrized tests for success/failure scenarios
+### 🔍 **Code Quality Workflow** 
+- **Pylint analysis** with 9.0+ score requirement
+- **Airflow-specific configuration** (.pylintrc)
+- **Automated quality gates** preventing low-quality merges
+
+### 🔒 **Security Scanning**
+- **GitHub CodeQL** for vulnerability detection
+- **Dependency security analysis**
+- **Automated security reviews** on pull requests
+
+### 📦 **Dependency Management**
+- **Airflow constraints** for conflict-free installations
+- **Version pinning** for production stability
+- **Separated dev/runtime dependencies**
+
+```bash
+# Install with constraints
+pip install -r airflow/requirements/requirements.txt
+```
+
+**Quality Gates:** All PRs require passing tests, code quality checks, and security scans before merge.
 
 ---
