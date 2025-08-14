@@ -14,7 +14,7 @@ This is a **Weather Data Pipeline** project that demonstrates modern data engine
 
 ## Architecture
 
-The pipeline follows an ELT pattern:
+The pipeline follows an ETL pattern:
 - **Extract**: Fetch geocoding data and weather forecasts from OpenWeather API using HttpOperator
 - **Transform**: Process JSON data into clean CSV format using Pandas with Pydantic validation
 - **Load**: Store raw JSON and transformed CSV in S3, then copy CSV data into Snowflake via external stage
@@ -93,9 +93,9 @@ This project needs further development to match real-world production standards:
 
 ### Infrastructure & Deployment
 - **Docker Modernization**: Multi-stage builds, security scanning, proper base images
-- **MWAA (Managed Workflows for Apache Airflow)**: Migration from self-hosted to AWS managed service
+- **AWS EC2 + Docker**: Cost-effective cloud deployment (~€15-20/month vs MWAA's €350+/month minimum)
 - **Infrastructure as Code**: Terraform/CloudFormation for reproducible deployments
-- **Container Orchestration**: Kubernetes deployment patterns
+- **Container Orchestration**: Kubernetes deployment patterns (future consideration)
 
 ### CI/CD Pipeline - **PRODUCTION READY** ✅
 - **Automated Testing**: ✅ Unit tests with pytest + automated CI workflow  
